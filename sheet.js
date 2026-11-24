@@ -318,6 +318,20 @@
     const bulkList = () => (typeof cfg.bulk === "function" ? cfg.bulk(views.find(v => v.id === viewId) || null) : cfg.bulk) || [];
     function bulkBar(){
       const n = [...rowSel].filter(k => data.some(r => rk(r) === k)).length;
+      // cfg.bulkAlways (v6.97, Kyle Tue 24 Nov 2026: "a qualify button that would be grayed out unless a checkbox was clicked"):
+      // the action buttons always show; each button's off(rows) returns why it can't run now (hover shows it, a click says it).
+      if (cfg.bulkAlways) {
+        const rows = selectedRows(), offOf = b => !n ? (b.none || "Select at least one author row first") : (b.off ? b.off(rows) || "" : "");
+        const L = bulkList();
+        $bulk.hidden = false;
+        $bulk.innerHTML = `<b>${n ? `${n.toLocaleString()} row${n>1?"s":""} selected` : "Tick rows to act on them"}</b>
+          ${L.map((b,i) => { const why = offOf(b); return `<button class="btn sm ${i===0?"primary":""}" data-bh="${i}" ${why ? `aria-disabled="true" title="${esc(why)}"` : b.tip ? `title="${esc(b.tip)}"` : ""}>${esc(b.label)}</button>`; }).join("")}
+          ${n ? `<button class="btn sm" data-b="clear">Clear selection</button>` : ""}`;
+        $bulk.querySelector('[data-b="clear"]')?.addEventListener("click", () => { rowSel.clear(); paint(); });
+        $bulk.querySelectorAll("[data-bh]").forEach(x => x.onclick = () => { const b = L[+x.dataset.bh], why = offOf(b);
+          if (why) { say(why); return; } b.run(selectedRows()); });
+        return;
+      }
       $bulk.hidden = !n; if (!n) return;
       $bulk.innerHTML = `<b>${n.toLocaleString()} row${n>1?"s":""} selected</b>
         ${bulkList().map((b,i) => `<button class="btn sm ${i===0?"primary":""}" data-bh="${i}">${esc(b.label)}</button>`).join("")}
