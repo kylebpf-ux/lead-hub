@@ -1,0 +1,194 @@
+/* BPF Sheet: the Lead Hub CRM's own spreadsheet (built from scratch, Tue 10 Nov 2026).
+   Uses the page's color tokens (--bg, --panel, --ink, --line, --accent, --ok, --warn, --bad …). */
+:root{--sh-purple:#6B45C2;--sh-purple-soft:#ECE5FA;--sh-grey:#5A6676;--sh-grey-soft:#E7EAEE;--sh-sel:rgba(47,85,212,.10)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--sh-purple:#B9A0F5;--sh-purple-soft:#2B2242;--sh-grey:#A4AFBC;--sh-grey-soft:#26303B;--sh-sel:rgba(125,152,245,.16)}}
+:root[data-theme="dark"]{--sh-purple:#B9A0F5;--sh-purple-soft:#2B2242;--sh-grey:#A4AFBC;--sh-grey-soft:#26303B;--sh-sel:rgba(125,152,245,.16)}
+
+.sh{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--panel);min-width:0;position:relative}
+.sh-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
+.sh-bar .sh-search{flex:1 1 200px;min-width:140px;max-width:340px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.sh-tb{border:1px solid transparent;background:none;border-radius:7px;padding:5px 9px;font:600 14px/1.2 var(--body);color:var(--ink);cursor:pointer;white-space:nowrap}
+.sh-tb:hover{background:var(--zebra);border-color:var(--line)}
+.sh-tb.on{background:var(--accent-soft);color:var(--accent)}
+.sh-tb[disabled]{opacity:.4;cursor:default;background:none;border-color:transparent}
+.sh-sep{width:1px;height:20px;background:var(--line);margin:0 2px}
+.sh-bulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 10px;background:var(--accent-soft);border-bottom:1px solid var(--line);font-size:14.5px}
+.sh-bulk b{color:var(--accent)}
+
+.sh-scroll{position:relative;overflow:auto;outline:none;min-height:160px;overscroll-behavior:contain}
+.sh-scroll:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+.sh-head{position:sticky;top:0;z-index:6;height:36px}
+.sh-hrow{display:flex;height:36px;background:var(--panel);box-shadow:inset 0 -1px 0 var(--line)}
+.sh-h{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:4px;padding:0 6px 0 10px;border-right:1px solid var(--line);font:600 13px/1.2 var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.03em;background:var(--panel);user-select:none;cursor:pointer;overflow:hidden}
+.sh-h:hover{background:var(--zebra)}
+.sh-h .sh-hl{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-h .sh-hi{font-size:12px;color:var(--accent);text-transform:none;letter-spacing:0}
+.sh-h .sh-hm{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 4px;border-radius:4px;font-size:12px}
+.sh-h .sh-hm:hover{background:var(--line);color:var(--ink)}
+.sh-h.drag{opacity:.45}
+.sh-h.dropL{box-shadow:inset 3px 0 0 var(--accent)} .sh-h.dropR{box-shadow:inset -3px 0 0 var(--accent)}
+.sh-h.csel{background:var(--accent-soft);color:var(--accent)}
+.sh-rz{position:absolute;top:0;right:-1px;width:8px;height:100%;cursor:col-resize;z-index:2}
+.sh-rz:hover,.sh-rz.on{background:var(--accent);opacity:.45}
+.sh-fz{position:sticky!important;z-index:3}
+.sh-hrow .sh-fz{z-index:7}
+.sh-fzlast{box-shadow:inset -2px 0 0 var(--line)}
+
+.sh-body{position:relative}
+.sh-row{position:absolute;left:0;display:flex;background:var(--panel)}
+.sh-row.z{background:var(--zebra)}
+.sh-row>.sh-c,.sh-row>.sh-g{background:inherit}
+.sh-row:hover{background:color-mix(in srgb,var(--accent-soft) 60%,var(--panel))}
+.sh-row.rsel{background:var(--accent-soft)}
+.sh-c{position:relative;flex:0 0 auto;padding:0 8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:15px;cursor:cell;display:flex;align-items:center;gap:4px}
+.sh-c>.sh-t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sh-c.wrap{white-space:normal;align-items:flex-start;padding-top:6px}
+.sh-c.wrap>.sh-t{white-space:normal;word-break:break-word;line-height:21px;overflow:visible;text-overflow:clip}
+.sh-c.ro{color:color-mix(in srgb,var(--ink) 82%,var(--muted))}
+.sh-c.num{justify-content:flex-end;font-family:var(--mono);font-size:14px}
+.sh-c.mono{font-family:var(--mono);font-size:14px}
+.sh-c a{color:var(--accent)}
+.sh-c mark{background:var(--warn-soft);color:inherit;border-radius:2px;box-shadow:0 0 0 1px var(--warn)}
+.sh-c::after{content:"";position:absolute;inset:0;pointer-events:none}
+.sh-c.sel::after{background:var(--sh-sel)}
+.sh-c.act::after{box-shadow:inset 0 0 0 2px var(--accent)}
+.sh-c.fillx::after{background:var(--sh-sel);outline:1px dashed var(--accent);outline-offset:-2px}
+.sh-c.found::after{box-shadow:inset 0 0 0 2px var(--warn)}
+.sh-fh{position:absolute;right:0;bottom:0;width:9px;height:9px;background:var(--accent);border:2px solid var(--panel);cursor:crosshair;z-index:2;border-radius:2px}
+.sh-g{position:relative;flex:0 0 auto;display:flex;align-items:center;gap:3px;padding:0 4px 0 8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font:12.5px/1 var(--mono);color:var(--muted);position:sticky;left:0;z-index:4}
+.sh-hrow .sh-g{z-index:8;background:var(--panel);border-bottom:0}
+.sh-g input{margin:0;cursor:pointer}
+.sh-g .sh-n{min-width:22px;text-align:right}
+.sh-g .sh-x{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 3px;border-radius:4px;font-size:13px;opacity:0}
+.sh-row:hover .sh-x,.sh-x:focus{opacity:1}
+.sh-g .sh-x:hover{background:var(--line);color:var(--accent)}
+.sh-grp{position:absolute;left:0;display:flex;align-items:center;gap:8px;padding:0 12px;font-weight:700;background:var(--bg);border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap}
+.sh-grp span{position:sticky;left:12px}
+.sh-grp small{font:500 13px var(--mono);color:var(--muted)}
+
+.sh-sum{position:sticky;bottom:0;z-index:5;display:flex;height:30px;background:var(--panel);box-shadow:inset 0 1px 0 var(--line)}
+.sh-sum .sh-s{flex:0 0 auto;padding:0 10px;border-right:1px solid var(--line);font:12.5px/30px var(--mono);color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;background:var(--panel)}
+.sh-sum .sh-s:hover{color:var(--ink);background:var(--zebra)}
+.sh-sum .sh-g{border-bottom:0;background:var(--panel);z-index:6}
+
+.sh-status{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;padding:6px 12px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.sh-status .sh-saving{margin-left:auto}
+.sh-status .err{color:var(--bad);font-weight:600}
+
+/* Editors */
+.sh-ed{position:absolute;z-index:9;min-height:34px;padding:6px 9px;border:0;border-radius:3px;box-shadow:0 0 0 2px var(--accent),0 6px 20px rgba(0,0,0,.18);background:var(--panel);color:var(--ink);font:15px/1.4 var(--body);resize:none;outline:none}
+textarea.sh-ed{min-height:34px}
+.sh-pick{position:absolute;z-index:9;background:var(--panel);border-radius:6px;box-shadow:0 0 0 2px var(--accent),0 8px 24px rgba(0,0,0,.2);display:flex;flex-direction:column;max-height:300px;min-width:200px}
+.sh-pick input{border:0;border-bottom:1px solid var(--line);padding:8px 10px;background:none;outline:none}
+.sh-pick ul{list-style:none;margin:0;padding:4px;overflow:auto}
+.sh-pick li{padding:6px 9px;border-radius:5px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.sh-pick li.on{background:var(--accent-soft)}
+.sh-pick li.cur::before{content:"✓";color:var(--accent);font-weight:700}
+
+/* Pop-up menus and panels */
+.sh-pop{position:fixed;z-index:40;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.2);padding:6px;min-width:220px;max-width:min(560px,calc(100vw - 24px));max-height:min(70vh,560px);overflow:auto;font-size:14.5px}
+.sh-pop .mi{display:flex;width:100%;align-items:center;gap:8px;text-align:left;border:0;background:none;padding:7px 10px;border-radius:6px;cursor:pointer;font:inherit;color:inherit}
+.sh-pop .mi:hover,.sh-pop .mi:focus{background:var(--zebra);outline:none}
+.sh-pop .mi kbd{margin-left:auto}
+.sh-pop .mi.danger{color:var(--bad)}
+.sh-pop hr{border:0;border-top:1px solid var(--line);margin:5px 2px}
+.sh-pop h4{margin:4px 8px 8px;font:700 13px/1.2 var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.sh-pop .pane{padding:6px 8px;display:flex;flex-direction:column;gap:8px}
+.sh-pop .cond{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sh-pop select,.sh-pop input[type=text],.sh-pop input[type=number],.sh-pop input[type=date],.sh-pop input:not([type]){padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);font:inherit;color:inherit;max-width:100%}
+.sh-pop .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:5px}
+.sh-pop .x:hover{background:var(--bad-soft);color:var(--bad)}
+.sh-pop .chk{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:6px;cursor:pointer}
+.sh-pop .chk:hover{background:var(--zebra)}
+.sh-pop .opts{display:flex;flex-direction:column;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:7px;padding:4px;min-width:200px}
+.sh-pop .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sh-pop .hint{color:var(--muted);font-size:13px}
+.sh-pop .sw{width:22px;height:22px;border-radius:6px;border:2px solid transparent;cursor:pointer}
+.sh-pop .sw.on{border-color:var(--ink)}
+kbd{font:500 12px/1 var(--mono);padding:3px 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--bg);color:var(--muted);white-space:nowrap}
+
+/* Colors (rules and host classes) */
+.sh-row.k-green,.sh-c.k-green{background:var(--ok-soft)!important}
+.sh-row.k-yellow,.sh-c.k-yellow{background:var(--warn-soft)!important}
+.sh-row.k-red,.sh-c.k-red{background:var(--bad-soft)!important}
+.sh-row.k-blue,.sh-c.k-blue{background:var(--accent-soft)!important}
+.sh-row.k-purple,.sh-c.k-purple{background:var(--sh-purple-soft)!important}
+.sh-row.k-grey,.sh-c.k-grey{background:var(--sh-grey-soft)!important}
+.sh-c.okc{background:var(--ok-soft)!important;box-shadow:inset 0 0 0 2px var(--ok)}
+.sh-c.chg{background:var(--ok-soft)!important;box-shadow:inset 0 0 0 2px var(--ok)}
+/* Filled in from a suggestion (not typed by a person): yellow outline, no fill (Kyle, Tue 10 Nov;
+   outline only since Thu 12 Nov: "less distracting"). Red outline = needs a person, and wins over yellow. */
+.sh-c.ai{box-shadow:inset 0 0 0 2px var(--ai-line,#E0A800)!important}
+.sh-drawer .df .aiw{font-size:13px;color:var(--warn);font-weight:600}
+.sh-c.bad,.sh-c.ai.bad{box-shadow:inset 0 0 0 2px var(--bad)!important}
+.sw.k-green{background:var(--ok)}.sw.k-yellow{background:var(--warn)}.sw.k-red{background:var(--bad)}.sw.k-blue{background:var(--accent)}.sw.k-purple{background:var(--sh-purple)}.sw.k-grey{background:var(--sh-grey)}
+.sh-chip{display:inline-block;font-size:13px;padding:2px 7px;border-radius:10px;background:var(--sh-grey-soft);margin-right:3px;white-space:nowrap}
+.sh-chk{display:inline-flex;width:18px;height:18px;border:1.5px solid var(--line);border-radius:4px;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.sh-chk.on{background:var(--ok);border-color:var(--ok);color:var(--panel)}
+
+/* Board view */
+.sh-board{display:flex;gap:12px;overflow:auto;padding:12px;align-items:flex-start;min-height:300px}
+.sh-lane{flex:0 0 270px;background:var(--bg);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.sh-lane.over{box-shadow:inset 0 0 0 2px var(--accent)}
+.sh-lane h5{margin:2px 4px 4px;font:700 14px/1.2 var(--body);display:flex;justify-content:space-between}
+.sh-lane h5 small{font:500 13px var(--mono);color:var(--muted)}
+.sh-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:grab;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.sh-card b{font-size:15px}
+.sh-card span{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-card:hover{border-color:var(--accent)}
+
+/* Record drawer */
+.sh-drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);z-index:35;background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(0,0,0,.18);display:flex;flex-direction:column}
+.sh-drawer header{display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.sh-drawer header h3{flex:1;font-size:21px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-drawer .body{overflow:auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px}
+.sh-drawer .df{display:flex;flex-direction:column;gap:3px}
+.sh-drawer .df label{font-size:13px;font-weight:600;color:var(--muted);display:flex;gap:6px;align-items:baseline}
+.sh-drawer .df label i{font-style:normal;font-weight:500;color:var(--muted);opacity:.8}
+.sh-drawer .df input,.sh-drawer .df select,.sh-drawer .df textarea{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);width:100%;font:inherit;color:inherit}
+.sh-drawer .df .ro{padding:7px 0;word-break:break-word}
+.sh-drawer .df .was{font-size:13px;color:var(--ok)}
+.sh-drawer .df.chg input,.sh-drawer .df.chg select,.sh-drawer .df.chg textarea{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok)}
+.sh-shade{position:fixed;inset:0;z-index:34;background:rgba(10,15,25,.25)}
+/* v6.17: the docked pane (double-click a row number or name). No shade: the table stays usable. On a wide window the
+   sheet makes room for it; at half-screen width it sits over the right of the table. */
+.sh-drawer.sh-dock{width:min(420px,100%);z-index:65;box-shadow:-8px 0 28px rgba(0,0,0,.16);outline:none}
+.sh-drawer.sh-dock header h3{font-size:19px}
+@media (min-width:1280px){body.sh-docked .sh.sh-dockhost{margin-right:420px}}
+.sh-row.sh-open>.sh-g{box-shadow:inset 3px 0 0 var(--accent)}
+/* v6.17: the one-line toolbar and the sheet that fills the window */
+.sh-bar.compact{flex-wrap:nowrap;overflow:hidden}
+.sh-bar.compact .sh-search{flex:1 1 160px;min-width:90px}
+.sh-bar.compact .sh-vbtn{max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.sh-bar.compact .sh-host:empty{display:none}
+.sh-pop .mi[disabled]{opacity:.45;cursor:default;background:none}
+.sh.sh-fill .sh-scroll{flex:1 1 auto;min-height:0;max-height:none}
+.sh.sh-fill .sh-board{flex:1 1 auto;min-height:0}
+.sh-status .sh-vname{font-weight:600;color:var(--ink)}
+
+.sh-empty{padding:28px;text-align:center;color:var(--muted)}
+.sh-help{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;padding:6px 8px;font-size:14px}
+@media (max-width:640px){.sh-bar .sh-tb .lbl{display:none}}
+
+/* The upload check's "To look at" cell: what's wrong, plus click-to-accept fixes. */
+.lk{display:flex;flex-direction:column;gap:3px;min-width:0;width:100%}
+.lk .lkt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh.h-medium .lk .lkt{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1}
+.sh.h-tall .lk .lkt{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+.lk .lkf{display:flex;gap:4px;overflow:hidden;flex-wrap:nowrap}
+.sh.h-tall .lk .lkf{flex-wrap:wrap}
+.lk .btn{padding:2px 8px;font-size:13.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.sh:not(.h-medium):not(.h-tall) .lk{flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:8px}
+.sh-drawer .lk .lkt{white-space:normal;display:block}
+.sh-drawer .lk .lkf{flex-wrap:wrap}
+.sh-tb svg{display:block}
+/* v6.21: saved views as tabs above the grid */
+.sh-vtabs{display:flex;flex-wrap:wrap;gap:2px;align-items:flex-end;padding:6px 8px 0;border-bottom:1px solid var(--line);flex:0 0 auto}
+.sh.sh-fill .sh-bar,.sh.sh-fill .sh-bulk{flex-shrink:0}
+.sh-vt{border:1px solid transparent;border-bottom:0;background:none;padding:6px 11px;border-radius:8px 8px 0 0;font-weight:600;font-size:14px;color:var(--muted);cursor:pointer;white-space:nowrap;margin-bottom:-1px}
+.sh-vt:hover{color:var(--ink);background:var(--zebra)}
+.sh-vt[aria-selected="true"]{color:var(--accent);background:var(--panel);border-color:var(--line);border-bottom:1px solid var(--panel)}
+.sh-vt.add{color:var(--accent);font-weight:500}
+
+/* Top sideways scrollbar (Kyle, Mon 23 Nov 2026) */
+.sh-topbar{overflow-x:auto;overflow-y:hidden;height:14px;flex:0 0 auto}.sh-topbar>div{height:1px}.sh-topbar[hidden]{display:none}
