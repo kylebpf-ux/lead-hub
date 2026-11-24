@@ -112,8 +112,12 @@
       for (const c of cols) {
         let body = 0;
         if (c.type === "check") body = 22;
-        else for (const r of sample) { let t = text(c, r); if (!t) continue; if (c.type === "url") t = String(t).replace(/^https?:\/\/(www\.)?/i, "");
-          if (t.length > 80) t = t.slice(0, 80); body = Math.max(body, m(t, "15px " + fam)); }
+        else { const ws = [];
+          for (const r of sample) { let t = text(c, r); if (!t) continue; if (c.type === "url") t = String(t).replace(/^https?:\/\/(www\.)?/i, "");
+            if (t.length > 80) t = t.slice(0, 80); ws.push(m(t, "15px " + fam)); }
+          // Fit 98% of the values, not the single longest (Kyle, Tue 24 Nov 2026: one 161-character junk name made Name 300px wide).
+          // The odd long one is cut with "…" and shows in full on hover, as before.
+          ws.sort((a, b) => a - b); body = ws.length ? (ws.length >= 20 ? ws[Math.floor(ws.length * 0.98)] : ws[ws.length - 1]) : 0; }
         const head = m(String(c.label).toUpperCase(), "600 13px " + fam) + 44;
         const cap = c.type === "long" ? 320 : c.type === "url" ? 260 : 300;
         const w = Math.max(body + 24, Math.min(head, Math.max(body + 24, 110)));
