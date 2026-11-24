@@ -220,9 +220,15 @@
       $body = root.querySelector(".sh-body"), $sum = root.querySelector(".sh-sum"), $board = root.querySelector(".sh-board"), $status = root.querySelector(".sh-status");
     // A second sideways scrollbar above the sheet, kept in step with the real one (Kyle, Mon 23 Nov 2026: "We need a scrollbar
     // at the top of this, in addition to the one at the bottom").
-    { const $tb = root.querySelector(".sh-topbar"); let busy = false;
-      const size = () => { const w = $sc.scrollWidth, need = w > $sc.clientWidth + 1; $tb.hidden = !need; $tb.firstElementChild.style.width = w + "px"; };
-      const sync = (src, dst) => () => { if (busy) return; busy = true; dst.scrollLeft = src.scrollLeft; requestAnimationFrame(() => busy = false); };
+    // v6.93 (Kyle, Tue 24 Nov 2026: "it jitters and hesitates as it nears the end"): the two bars must have the SAME scroll range
+    // (the sheet's own bar is narrower by its vertical scrollbar, so the top bar ran out first and snapped the sheet back), and
+    // only the bar being moved leads; the other just follows until it has been still for a moment.
+    { const $tb = root.querySelector(".sh-topbar"); let lead = null, t = 0;
+      const size = () => { const range = $sc.scrollWidth - $sc.clientWidth, need = range > 1; $tb.hidden = !need;
+        if (need) $tb.firstElementChild.style.width = (range + $tb.clientWidth) + "px"; };
+      const sync = (src, dst) => () => { if (lead && lead !== src) return; lead = src;
+        if (Math.abs(dst.scrollLeft - src.scrollLeft) > 0.5) dst.scrollLeft = src.scrollLeft;
+        clearTimeout(t); t = setTimeout(() => lead = null, 120); };
       $sc.addEventListener("scroll", sync($sc, $tb), { passive: true }); $tb.addEventListener("scroll", sync($tb, $sc), { passive: true });
       const ro = new ResizeObserver(size); ro.observe($sc); ro.observe($body); ro.observe($head); }
     // Fill the window (v6.17, Kyle Thu 19 Nov 2026: "this spreadsheet is impossible to work in" at half-screen width).
